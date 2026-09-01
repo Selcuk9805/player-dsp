@@ -1,8 +1,34 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Everything this app plays comes over the network: the catalog, the resolved stream
+         URLs, and the automix transition plans. The Flutter template only declares INTERNET in
+         the debug and profile manifests (for the tooling's own hot-reload channel), which means
+         debug builds work and release builds silently cannot open a socket at all. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Background playback. Without a foreground service Android freezes a backgrounded
+         process' timers and reclaims it under memory pressure, which here would not just stop
+         the audio but strand an automix crossfade mid-blend with two decks half-faded.
+         FOREGROUND_SERVICE_MEDIA_PLAYBACK is the type declaration Android 14+ requires;
+         WAKE_LOCK keeps the CPU up while the screen is off. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!-- Android 13+. Only the visibility of the playback notification depends on this; the
+         service runs either way, so denying it costs the transport controls, not playback. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- usesCleartextTraffic: the DSP backend is a self-hosted service on the user's own
+         network, reached over plain HTTP at an address typed into Settings at runtime. Since
+         Android 9 cleartext is refused by default, and a network security config cannot help
+         here: it matches on literal domains, and the backend's address is not known at build
+         time. Stream URLs resolved through it are HTTPS and unaffected. -->
     <application
         android:label="auravibe"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -25,6 +51,29 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- The foreground service that hosts playback, and the receiver that delivers
+             headset/bluetooth transport buttons to it. Both classes live inside the
+             audio_service plugin, so lint's "is this class instantiatable from here?" check
+             has nothing local to resolve and is suppressed. -->
+        <service
+            android:name="com.ryanheise.audioservice.AudioService"
+            android:foregroundServiceType="mediaPlayback"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService"/>
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name="com.ryanheise.audioservice.MediaButtonReceiver"
+            android:exported="true"
+            tools:ignore="Instantiatable">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON"/>
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

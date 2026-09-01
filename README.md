@@ -23,6 +23,7 @@ flamming past each other.
 | **Search** | Tracks, albums, artists and playlists, with filters |
 | **Library** | Favorites and custom playlists, stored locally on the device |
 | **Playback** | Persistent mini player, full Now Playing screen with album-art-driven color, queue management |
+| **Background playback** | On Android, a `mediaPlayback` foreground service with notification and lock-screen transport controls, so leaving the app does not stop the music — or strand a transition mid-blend |
 
 The interface language is Turkish. The codebase is English.
 
@@ -155,6 +156,7 @@ lib/
 │  ├─ catalog_service.dart      Search, artists, albums, playlists, charts
 │  ├─ stream_service.dart       Video id → playable CDN URL
 │  ├─ storage_service.dart      Settings and local library persistence
+│  ├─ media_session.dart        Foreground service / lock-screen bridge (Android)
 │  └─ automix_log.dart          Transition telemetry to a collectable file
 ├─ models/
 │  └─ transition_plan.dart      Mirrors the backend's plan schema
@@ -187,6 +189,9 @@ is being computed, green with the target BPM and key once one is ready.
 - **The backend is required and not included.** This repository does not build into a working
   app on its own.
 - Release builds are debug-signed.
+- **Audio focus is not handled.** Playback does not duck for notifications or pause for an
+  incoming call — the media session publishes state and accepts transport commands, but nothing
+  yet listens for focus loss.
 - No light theme — the design was built dark-first.
 - `ffmpeg_kit_flutter_new` still applies the Kotlin Gradle Plugin the old way. It builds today
   with a warning; future Flutter versions will refuse it.
